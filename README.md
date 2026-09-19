@@ -1,6 +1,6 @@
 # sBTC Vault
 
-A non-custodial, over-collateralized borrowing vault backed by sBTC —
+A non-custodial, over-collateralized borrowing vault backed by sBTC,
 built as a working answer to "what would you ship on Stacks?"
 
 ## Why this, specifically
