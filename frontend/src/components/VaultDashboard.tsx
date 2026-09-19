@@ -122,6 +122,7 @@ export default function VaultDashboard() {
   const [sbtcBalance, setSbtcBalance] = useState<bigint | null>(null);
   const [priceBps, setPriceBps] = useState<bigint | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [lastTxid, setLastTxid] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
 
   const [depositAmount, setDepositAmount] = useState('');
@@ -156,15 +157,40 @@ export default function VaultDashboard() {
   const runAction = async (name: string, fn: () => Promise<{ txid?: string }>) => {
     setBusyAction(name);
     setStatus(null);
+    setLastTxid(null);
     try {
       const result = await fn();
-      setStatus(result.txid ? `Submitted: ${result.txid}` : 'Submitted.');
+      if (result.txid) {
+        setLastTxid(result.txid);
+        setStatus('Submitted — waiting for confirmation…');
+      } else {
+        setStatus('Submitted.');
+      }
       await refresh();
+      if (result.txid && !scaffoldConfig.isDevnet) {
+        pollForConfirmation(result.txid);
+      }
     } catch (e: any) {
       setStatus(`Failed: ${e?.message ?? String(e)}`);
     } finally {
       setBusyAction(null);
     }
+  };
+
+  // Testnet confirmation isn't instant -- the txid returned by the wallet
+  // is only proof of submission, not confirmation. Poll a few times over
+  // ~2 minutes rather than trusting a single refresh() right after submit.
+  const pollForConfirmation = (txid: string) => {
+    let attempts = 0;
+    const maxAttempts = 12; // ~2 minutes at 10s intervals
+    const interval = setInterval(async () => {
+      attempts += 1;
+      await refresh();
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        setStatus((s) => (s?.startsWith('Submitted') ? 'Still pending — check the explorer link below.' : s));
+      }
+    }, 10_000);
   };
 
   if (!isMounted) return null;
@@ -195,13 +221,29 @@ export default function VaultDashboard() {
             <span>{position ? fmtVaultUsd(position.debt) : '—'}</span>
           </div>
         </div>
-        <div
-          className="font-mono text-[11px] px-3 py-1 rounded-full border shrink-0"
-          style={{ color: toneColor[health.tone], borderColor: toneColor[health.tone] }}
-        >
-          {health.label}
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => refresh()}
+            title="Refresh from chain"
+            className="font-mono text-[11px] text-[#908E8E] border border-[#2A2929] rounded-full px-2 py-1"
+          >
+            ↻
+          </button>
+          <div
+            className="font-mono text-[11px] px-3 py-1 rounded-full border"
+            style={{ color: toneColor[health.tone], borderColor: toneColor[health.tone] }}
+          >
+            {health.label}
+          </div>
         </div>
       </div>
+
+      {!scaffoldConfig.isDevnet && (
+        <p className="text-[11px] font-mono text-[#5c5b5b] text-center -mt-2">
+          Testnet confirmations can take a minute or two. Use ↻ above or the link below an action to
+          check status yourself rather than waiting on auto-refresh.
+        </p>
+      )}
 
       {/* Tab bar */}
       <div className="flex gap-1 bg-[#1F1E1F] rounded-[14px] p-1">
@@ -279,7 +321,7 @@ export default function VaultDashboard() {
           <>
             <div className="flex flex-col gap-2">
               <div className="font-instrument text-[15px]">Deposit collateral</div>
-              <Field label="Amount (sBTC)" value={depositAmount} onChange={setDepositAmount} placeholder="0.10" />
+              <Field label="Amount (sBTC — demo token)" value={depositAmount} onChange={setDepositAmount} placeholder="0.10" />
               <ActionButton
                 full
                 busy={busyAction === 'deposit'}
@@ -320,7 +362,7 @@ export default function VaultDashboard() {
             <div className="h-px bg-[#2A2929]" />
             <div className="flex flex-col gap-2">
               <div className="font-instrument text-[15px]">Withdraw collateral</div>
-              <Field label="Amount (sBTC)" value={withdrawAmount} onChange={setWithdrawAmount} placeholder="0.05" />
+              <Field label="Amount (sBTC — demo token)" value={withdrawAmount} onChange={setWithdrawAmount} placeholder="0.05" />
               <ActionButton
                 variant="secondary"
                 full
@@ -393,7 +435,21 @@ export default function VaultDashboard() {
         )}
       </div>
 
-      {status && <div className="font-mono text-[11px] text-[#908E8E] break-all">{status}</div>}
+      {status && (
+        <div className="font-mono text-[11px] text-[#908E8E] flex flex-col gap-1">
+          <span>{status}</span>
+          {lastTxid && !scaffoldConfig.isDevnet && (
+            <a
+              href={`${scaffoldConfig.explorerBaseUrl}${lastTxid}${scaffoldConfig.explorerChainQuery}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[#F7931A] underline break-all"
+            >
+              View transaction on explorer ↗
+            </a>
+          )}
+        </div>
+      )}
 
       {scaffoldConfig.isDevnet && (
         <div className="font-mono text-[11px] text-[#5c5b5b] text-center">
