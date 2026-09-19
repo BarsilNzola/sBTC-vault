@@ -1,0 +1,24 @@
+id: 0
+name: Testnet deployment
+network: testnet
+stacks-node: https://api.testnet.hiro.so
+bitcoin-node: http://blockstack:blockstacksystem@bitcoind.testnet.stacks.co:18332
+plan:
+  batches:
+  - id: 0
+    transactions:
+    - transaction-type: contract-publish
+      contract-name: mock-sbtc
+      expected-sender: ST3FB4WQWXGVGHM74FBBDQBMBP7ESE784SV4AAJK2
+      cost: 22490
+      path: contracts/mock-sbtc.clar
+      anchor-block-only: true
+      clarity-version: 3
+    - transaction-type: contract-publish
+      contract-name: sbtc-vault-v2
+      expected-sender: ST3FB4WQWXGVGHM74FBBDQBMBP7ESE784SV4AAJK2
+      cost: 110050
+      path: contracts/sbtc-vault-v2.clar
+      anchor-block-only: true
+      clarity-version: 3
+    epoch: '3.1'

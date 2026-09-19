@@ -1,0 +1,30 @@
+[project]
+name = "sbtc-vault"
+description = "Non-custodial BTC-backed borrowing vault built with Scaffold Stacks"
+authors = []
+telemetry = false
+cache_dir = "./.cache"
+requirements = []
+# The official testnet sBTC faucet is down (confirmed by hackathon
+# organizers), and separately, the real sbtc-token contract's mint
+# function is gated to the sBTC signers anyway -- so `mock-sbtc.clar`
+# is the token this project actually uses for now, not a placeholder.
+# If a real sBTC integration becomes possible later, add:
+#   requirements = [
+#     { contract_id = "SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-deposit" },
+#   ]
+
+[repl.analysis]
+passes = ["check_checker"]
+check_checker = { trusted_sender = false, trusted_caller = false, callee_filter = false }
+
+[contracts.mock-sbtc]
+path = "contracts/mock-sbtc.clar"
+clarity_version = 3
+epoch = "3.1"
+
+[contracts.sbtc-vault-v2]
+path = "contracts/sbtc-vault-v2.clar"
+clarity_version = 3
+epoch = "3.1"
+depends_on = ["mock-sbtc"]
