@@ -97,7 +97,10 @@ export async function getPosition(address: string): Promise<VaultPosition> {
     [Cl.principal(address)],
     address
   );
-  const v = json.value.value;
+  // get-position returns a plain tuple, not an (ok ...)-wrapped response,
+  // so cvToJSON gives {type, value: {fields...}} -- one less nesting
+  // level than a response type like get-balance below.
+  const v = json.value;
   return {
     collateral: BigInt(v.collateral.value),
     debt: BigInt(v.debt.value),
@@ -109,7 +112,8 @@ export async function getPosition(address: string): Promise<VaultPosition> {
 
 export async function getVaultStats(address: string) {
   const json = await readOnly(deployerAddress(), VAULT_CONTRACT_NAME, 'get-vault-stats', [], address);
-  const v = json.value.value;
+  // Same as getPosition -- plain tuple, not response-wrapped.
+  const v = json.value;
   return {
     totalCollateral: BigInt(v['total-collateral'].value),
     totalDebt: BigInt(v['total-debt'].value),
