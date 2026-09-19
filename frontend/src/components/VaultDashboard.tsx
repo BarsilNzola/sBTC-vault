@@ -17,6 +17,7 @@ import {
   liquidate,
   repay,
   setDemoPrice,
+  usesMockToken,
   withdrawCollateral,
 } from '../lib/vaultContract';
 
@@ -222,6 +223,12 @@ export default function VaultDashboard() {
       <div className="bg-[#1F1E1F] rounded-[20px] p-5 flex flex-col gap-4">
         {tab === 'Position' && (
           <>
+            {usesMockToken() && (
+              <p className="text-[11px] font-mono text-[#908E8E] bg-[#131416] rounded-[10px] px-3 py-2">
+                Using a demo sBTC-equivalent token for this deployment — the official testnet sBTC
+                faucet is down. Same interface, same math, different token address.
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-4 font-mono text-[13px]">
               <div className="flex flex-col gap-1">
                 <span className="text-[#908E8E]">Collateral (sBTC)</span>
@@ -249,7 +256,7 @@ export default function VaultDashboard() {
               </div>
             </div>
 
-            {scaffoldConfig.isDevnet ? (
+            {usesMockToken() ? (
               <ActionButton
                 variant="secondary"
                 full
