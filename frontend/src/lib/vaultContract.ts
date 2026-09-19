@@ -20,24 +20,34 @@ const DEPLOYER_ADDRESS: Record<'devnet' | 'testnet', string> = {
   testnet: 'ST3FB4WQWXGVGHM74FBBDQBMBP7ESE784SV4AAJK2',
 };
 
-// The real sBTC contract, per Stacks' official network reference. Only
-// used on testnet/mainnet, where the deployed vault has been manually
-// swapped to call the real contract (see the note in sbtc-vault.clar).
-// On devnet, the vault calls the local `mock-sbtc` contract instead.
-const SBTC_CONTRACT: Record<'testnet' | 'mainnet', string> = {
+// The real sBTC contract, per Stacks' official network reference. Not
+// currently used -- the testnet sBTC faucet is down (confirmed by the
+// hackathon organizers), and separately the real contract's mint path is
+// gated to the sBTC signers anyway, so this project uses the local
+// `mock-sbtc` contract everywhere for now. Kept here in case real sBTC
+// integration becomes usable later; see the note in sbtc-vault-v2.clar
+// for how to switch back.
+const SBTC_CONTRACT: Record<'testnet', string> = {
   testnet: 'SN3VMHXEN64ZZF71JQ5VESXDWTR301XTTXGF4J8F1.sbtc-token',
-  mainnet: 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token',
 };
+const USE_REAL_SBTC = false;
 
 function networkKey(): 'devnet' | 'testnet' {
-  return scaffoldConfig.network as 'devnet' | 'testnet' ;
+  return scaffoldConfig.network as 'devnet' | 'testnet';
+}
+
+export function usesMockToken(): boolean {
+  return !USE_REAL_SBTC || networkKey() === 'devnet';
 }
 
 function deployerAddress(): string {
   return DEPLOYER_ADDRESS[networkKey()];
 }
 
-export const VAULT_CONTRACT_NAME = 'sbtc-vault';
+// Renamed from 'sbtc-vault' -- that name is already taken on testnet by
+// an earlier deploy pointing at the (currently unreachable) real sBTC
+// contract, and Stacks contracts are immutable once published.
+export const VAULT_CONTRACT_NAME = 'sbtc-vault-v2';
 export const MOCK_TOKEN_CONTRACT_NAME = 'mock-sbtc';
 
 export function vaultContractId() {
@@ -45,9 +55,8 @@ export function vaultContractId() {
 }
 
 export function tokenContractId() {
-  const key = networkKey();
-  if (key === 'devnet') return `${deployerAddress()}.${MOCK_TOKEN_CONTRACT_NAME}`;
-  return SBTC_CONTRACT[key];
+  if (usesMockToken()) return `${deployerAddress()}.${MOCK_TOKEN_CONTRACT_NAME}`;
+  return SBTC_CONTRACT['testnet'];
 }
 
 // ---------------------------------------------------------------------
@@ -120,7 +129,7 @@ export async function getSbtcBalance(address: string): Promise<bigint> {
 
 // ---------------------------------------------------------------------
 // Writes -- routes to the local devnet burner signer on devnet, or opens
-// the connected browser wallet (Leather / Xverse) on testnet/mainnet.
+// the connected browser wallet (Leather / Xverse) on testnet.
 // ---------------------------------------------------------------------
 
 type WriteResult = { txid?: string };
@@ -186,13 +195,15 @@ export function setDemoPrice(newPriceBps: bigint, senderAddress: string | null) 
 }
 
 export function faucetUrl(): string {
+  // Not currently used, kept for when/if the real sBTC faucet is back.
   return 'https://platform.hiro.so/faucet';
 }
 
 export function faucetSbtc(senderAddress: string | null) {
-  // Only meaningful on devnet, where mock-sbtc's faucet is open to anyone.
-  // On testnet/mainnet, use faucetUrl() instead -- the real sBTC contract
-  // has no such function (see the note in sbtc-vault.clar).
+  // Works on any network where usesMockToken() is true (currently: all
+  // of them) -- mock-sbtc's faucet is open to anyone, unlike the real
+  // sBTC contract's protocol-gated mint (see the note in
+  // sbtc-vault-v2.clar).
   return writeContract(MOCK_TOKEN_CONTRACT_NAME, 'faucet', [], senderAddress);
 }
 
